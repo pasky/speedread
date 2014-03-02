@@ -1,0 +1,242 @@
+#!/usr/bin/perl -CSA
+#
+# speedread:  A simple terminal-based open source spritz-alike
+#
+# Show input text as a per-word RSVP (rapid serial visual presentation)
+# aligned on optimal reading points.  This kind of input mode allows
+# reading text at a much more rapid pace than usual as the eye can
+# stay fixed on a single place.
+#
+# (c) Petr Baudis <pasky@ucw.cz>  2014
+# MIT licence
+#
+# Usage: cat file.txt | speedread [-w WORDSPERMINUTE]
+#
+# The default of 250 words per minut is very timid, designed so that
+# you get used to this.  Be sure to try cranking this up, 500wpm
+# should still be fairly easy to follow even for beginners.
+#
+# speedread is slightly interactive, with these controls accepted:
+#
+#   [ - slow down by 10%
+#   ] - speed up by 10%
+#   space - pause (and show the last two lines)
+
+use warnings;
+use strict;
+use autodie;
+use v5.14;
+
+my $wpm = 250;
+
+
+use utf8;
+use encoding::warnings;
+
+use Term::Screen;
+use Term::ANSIColor;
+use POSIX qw(ceil floor);
+use Time::HiRes qw(usleep gettimeofday tv_interval);
+
+use Getopt::Long;
+GetOptions("wpm|w=i" => \$wpm);
+
+my $wordtime = 0.9; # relative to wpm
+my $lentime = 0.04; # * sqrt(length $word), relative to wpm
+my $fstoptime = 1.2; # relative to wpm
+my $firsttime = 0.2; # [s]
+my $ORPloc = 0.35;
+my $ORPmax = 0.2;
+my $ORPvisualpos = 20;
+my $cursorpos = 64;
+my $paused = 0;
+
+my @lastlines;
+my $tty = rawinput->new();
+$| = 1;
+
+my $wordcounter = 0;
+my $lettercounter = 0;
+my $t0 = [gettimeofday];
+sub print_stats {
+	my $elapsed = tv_interval($t0, [gettimeofday]);
+	my $truewpm = $wordcounter / $elapsed * 60;
+	printf("\n %.2fs, %d words, %d letters, %s%.2f%s true wpm\n",
+		$elapsed, $wordcounter, $lettercounter,
+		color('bold green'), $truewpm, color('reset'));
+}
+$SIG{INT} = sub { print_stats; exit; };
+
+main();
+
+# XXX: This is very naive. Quick Google Scholar queries did not
+# reveal any good published method for ORP yet. :(
+sub find_ORP {
+	my ($word, $ORPloc) = @_;
+
+	# Special case for short words:
+	return 0 if (length($word) <= 1);
+	return 1 if (length($word) <= 4);
+
+	my $i = ceil((length($word)-1) * $ORPloc);
+
+	sub is_vowel {
+		my ($letter) = @_;
+		my @vowels = qw(a e i o u y á é ë í ó ö ô ů ú ü ý);
+		return grep { $letter eq $_ } @vowels;
+	}
+
+	# Find nearest consonant
+	if (is_vowel(substr($word, $i, 1))) {
+		my $mini = floor((length($word)-1) * $ORPmax);
+		my $maxi = ceil((length($word)-1) * (1-$ORPmax));
+		for my $d (1..length($word)) {
+			if ($i+$d <= $maxi and !is_vowel(substr($word, $i+$d, 1))) {
+				$i = $i+$d;
+				last;
+			}
+			if ($i-$d >= $mini and !is_vowel(substr($word, $i-$d, 1))) {
+				$i = $i-$d;
+				last;
+			}
+		}
+	}
+
+	return $i;
+}
+
+sub show_guide {
+	# Top visual guide
+	say(" "x$ORPvisualpos . color('red') . "v" . color('reset') . "\033[K");
+}
+
+sub show_word {
+	my ($word, $i) = @_;
+
+	print("\r\033[K"
+		. " " x ($ORPvisualpos - $i)
+		. color("bold")
+		. substr($word, 0, $i)
+		. color("red")
+		. substr($word, $i, 1)
+		. color("white")
+		. substr($word, $i+1)
+		. color("reset")
+		. " " x ($cursorpos - (($ORPvisualpos - $i) + length($word)))
+		. "$wpm wpm"
+		. ($paused ? "  ".color("yellow")."PAUSED".color("reset") : ""));
+}
+
+sub word_time {
+	my ($word) = @_;
+
+	my $time = $word =~ /\.$/ ? $fstoptime : $wordtime;
+	$time += sqrt(length($word)) * $lentime;
+	$time *= 60 / $wpm;
+
+	# Give user some time to focus on the first word, even with high wpm.
+	$time = $firsttime if ($wordcounter == 0 and $time < $firsttime);
+
+	return $time;
+}
+
+sub print_context {
+	my ($wn) = @_;
+	# One line up and to its beginning
+	print "\r\033[K\033[A\033[K";
+	# First line of context
+	say $lastlines[1] if $lastlines[1];
+	# In second line of context, highlight our word
+	my $line0 = $lastlines[0];
+	my $c0 = color('yellow');
+	my $c1 = color('reset');
+	$line0 =~ s/^((?:.*?(?:-|\s)+){$wn})(.*?)(-|\s)/$1$c0$2$c1$3/;
+	say $line0;
+}
+
+sub process_keys {
+	my ($word, $i, $wn) = @_;
+	while ($tty->key_pressed() or $paused) {
+		my $ch = $tty->getch();
+		if ($ch eq '[') {
+			$wpm = int($wpm * 0.9);
+
+		} elsif ($ch eq ']') {
+			$wpm = int($wpm * 1.1);
+
+		} elsif ($ch eq ' ') {
+			$paused = not $paused;
+			if ($paused) {
+				# Print context.
+				print_context($wn);
+				show_guide();
+				show_word($word, $i);
+			}
+		}
+	}
+}
+
+sub main {
+	show_guide();
+
+	while (<>) {
+		chomp;
+
+		unshift @lastlines, $_;
+		pop @lastlines if @lastlines > 2;
+
+		my $wn = 0;
+		my (@words) = grep { /./ } split /(?:-|\s)+/;
+		for my $word (@words) {
+			my $i = find_ORP($word, $ORPloc);
+			show_word($word, $i);
+
+			my $time = word_time($word);
+			Time::HiRes::usleep($time * 1000000);
+
+			# Here, we potentially get paused.
+			process_keys($word, $i, $wn);
+
+			$wordcounter++;
+			$lettercounter += length($word);
+			$wn++;
+		}
+	}
+
+	print_stats();
+	sleep(1);
+}
+
+
+package rawinput;
+
+# An ad-hoc interface to interactive terminal input.  Term::Screen *should*
+# have been a natural choice here, unfortunately it is fixated at reading
+# from stdin instead of /dev/tty. Tough.
+
+sub new {
+	my $class = shift;
+	my $self;
+	open $self, '/dev/tty';
+	bless $self, $class;
+	eval { system('stty -F /dev/tty min 1 -icanon -echo'); };
+	return $self;
+}
+
+sub DESTROY {
+	eval { system('stty -F /dev/tty cooked echo'); };
+}
+
+sub key_pressed {
+	my $self = shift;
+	my $readfields = '';
+	vec($readfields, fileno($self), 1) = 1;
+	my $ready = 0;
+	eval { $ready = select($readfields, undef, undef, 0); };
+	return $ready;
+}
+
+sub getch {
+	my $self = shift;
+	getc($self);
+}
