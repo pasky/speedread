@@ -10,11 +10,14 @@
 # (c) Petr Baudis <pasky@ucw.cz>  2014
 # MIT licence
 #
-# Usage: cat file.txt | speedread [-w WORDSPERMINUTE]
+# Usage: cat file.txt | speedread [-w WORDSPERMINUTE] [-m]
 #
 # The default of 250 words per minut is very timid, designed so that
 # you get used to this.  Be sure to try cranking this up, 500wpm
 # should still be fairly easy to follow even for beginners.
+#
+# speedread can join short words together if you specify the -m switch.
+# It did not work well for pasky so far, though.
 #
 # speedread is slightly interactive, with these controls accepted:
 #
@@ -28,6 +31,7 @@ use autodie;
 use v5.14;
 
 my $wpm = 250;
+my $multiword = 0;
 
 
 use utf8;
@@ -39,11 +43,13 @@ use POSIX qw(ceil floor);
 use Time::HiRes qw(usleep gettimeofday tv_interval);
 
 use Getopt::Long;
-GetOptions("wpm|w=i" => \$wpm);
+GetOptions("wpm|w=i" => \$wpm,
+	   "multiword|m" => \$multiword);
 
 my $wordtime = 0.9; # relative to wpm
 my $lentime = 0.04; # * sqrt(length $word), relative to wpm
 my $fstoptime = 1.2; # relative to wpm
+my $multitime = 1.2; # relative to wpm
 my $firsttime = 0.2; # [s]
 my $ORPloc = 0.35;
 my $ORPmax = 0.2;
@@ -113,12 +119,15 @@ sub show_guide {
 sub show_word {
 	my ($word, $i) = @_;
 
+	my $pivotch = substr($word, $i, 1);
+	$pivotch = "·" if $pivotch eq ' ';
+
 	print("\r\033[K"
 		. " " x ($ORPvisualpos - $i)
 		. color("bold")
 		. substr($word, 0, $i)
 		. color("red")
-		. substr($word, $i, 1)
+		. $pivotch
 		. color("white")
 		. substr($word, $i+1)
 		. color("reset")
@@ -130,7 +139,12 @@ sub show_word {
 sub word_time {
 	my ($word) = @_;
 
-	my $time = $word =~ /\.$/ ? $fstoptime : $wordtime;
+	my $time = $wordtime;
+	if ($word =~ /\.$/) {
+		$time = $fstoptime;
+	} elsif ($word =~ / /) {
+		$time = $multitime;
+	}
 	$time += sqrt(length($word)) * $lentime;
 	$time *= 60 / $wpm;
 
@@ -185,8 +199,19 @@ sub main {
 		unshift @lastlines, $_;
 		pop @lastlines if @lastlines > 2;
 
-		my $wn = 0;
 		my (@words) = grep { /./ } split /(?:-|\s)+/;
+
+		if ($multiword) {
+			# Join adjecent short words
+			for (my $i = 0; $i < $#words - 1; $i++) {
+				if (length($words[$i]) <= 3 and length($words[$i+1]) <= 3) {
+					$words[$i] .= ' ' . $words[$i+1];
+					splice(@words, $i+1, 1);
+				}
+			}
+		}
+
+		my $wn = 0;
 		for my $word (@words) {
 			my $i = find_ORP($word, $ORPloc);
 			show_word($word, $i);
