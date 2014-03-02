@@ -11,7 +11,7 @@ can stay fixed on a single place.
 Basic Example
 -------------
 
-	cat tea.txt | speedread -w 250
+	cat tea.txt | ./speedread -w 250
 
 The default of 250 words per minut is very timid, designed so that you get
 used to this.  Be sure to try cranking this up, 500wpm should still be fairly
