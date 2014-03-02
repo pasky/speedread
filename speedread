@@ -75,6 +75,7 @@ $SIG{INT} = sub { print_stats; exit; };
 
 main();
 
+# ORP: Optical Recognition Point (the red-colored alignment pilot)
 # XXX: This is very naive. Quick Google Scholar queries did not
 # reveal any good published method for ORP yet. :(
 sub find_ORP {
