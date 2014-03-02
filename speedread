@@ -75,41 +75,13 @@ $SIG{INT} = sub { print_stats; exit; };
 
 main();
 
-# ORP: Optical Recognition Point (the red-colored alignment pilot)
-# XXX: This is very naive. Quick Google Scholar queries did not
-# reveal any good published method for ORP yet. :(
+# ORP: Optical Recognition Point (the red-colored alignment pilot),
+# the way Spritz probably does it.
 sub find_ORP {
 	my ($word, $ORPloc) = @_;
 
-	# Special case for short words:
-	return 0 if (length($word) <= 1);
-	return 1 if (length($word) <= 4);
-
-	my $i = ceil((length($word)-1) * $ORPloc);
-
-	sub is_vowel {
-		my ($letter) = @_;
-		my @vowels = qw(a e i o u y á é ë í ó ö ô ů ú ü ý);
-		return grep { $letter eq $_ } @vowels;
-	}
-
-	# Find nearest consonant
-	if (is_vowel(substr($word, $i, 1))) {
-		my $mini = floor((length($word)-1) * $ORPmax);
-		my $maxi = ceil((length($word)-1) * (1-$ORPmax));
-		for my $d (1..length($word)) {
-			if ($i+$d <= $maxi and !is_vowel(substr($word, $i+$d, 1))) {
-				$i = $i+$d;
-				last;
-			}
-			if ($i-$d >= $mini and !is_vowel(substr($word, $i-$d, 1))) {
-				$i = $i-$d;
-				last;
-			}
-		}
-	}
-
-	return $i;
+	return 4 if (length($word) > 13);
+	return (0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3)[length($word)];
 }
 
 sub show_guide {
