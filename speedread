@@ -37,7 +37,6 @@ my $multiword = 0;
 use utf8;
 use encoding::warnings;
 
-use Term::Screen;
 use Term::ANSIColor;
 use POSIX qw(ceil floor);
 use Time::HiRes qw(usleep gettimeofday tv_interval);
