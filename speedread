@@ -47,8 +47,8 @@ GetOptions("wpm|w=i" => \$wpm,
 
 my $wordtime = 0.9; # relative to wpm
 my $lentime = 0.04; # * sqrt(length $word), relative to wpm
-my $commatime = 1.1; # relative to wpm
-my $fstoptime = 1.2; # relative to wpm
+my $commatime = 2; # relative to wpm
+my $fstoptime = 3; # relative to wpm
 my $multitime = 1.2; # relative to wpm
 my $firsttime = 0.2; # [s]
 my $ORPloc = 0.35;
