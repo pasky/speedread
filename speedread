@@ -79,9 +79,12 @@ sub print_stats {
 	printf("\n %.2fs, %d words, %d letters, %s%.2f%s true wpm\n",
 		$elapsed, $wordcounter, $lettercounter,
 		color('bold green'), $truewpm, color('reset'));
-	printf(" To resume from this point run with argument -r %d\n", $resumecounter);
 }
-$SIG{INT} = sub { print_stats; exit; };
+$SIG{INT} = sub {
+	print_stats;
+	say " To resume from this point run with argument -r $resumecounter";
+	exit;
+};
 
 main();
 
