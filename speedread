@@ -1,4 +1,4 @@
-#!/usr/bin/perl -CSA
+#!/usr/bin/env perl -CSA
 #
 # speedread:  A simple terminal-based open source spritz-alike
 #
@@ -219,12 +219,20 @@ sub new {
 	my $self;
 	open $self, '/dev/tty';
 	bless $self, $class;
-	eval { system('stty -F /dev/tty min 1 -icanon -echo'); };
+    if ($^O eq 'darwin') {
+        eval { system('stty -f /dev/tty min 1 -icanon -echo'); };
+    } else {
+        eval { system('stty -F /dev/tty min 1 -icanon -echo'); };
+    }
 	return $self;
 }
 
 sub DESTROY {
-	eval { system('stty -F /dev/tty cooked echo'); };
+    if ($^O eq 'darwin') {
+        eval { system('stty -f /dev/tty cooked echo'); };
+    } else {
+        eval { system('stty -F /dev/tty cooked echo'); };
+    }
 }
 
 sub key_pressed {
