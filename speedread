@@ -10,7 +10,7 @@
 # (c) Petr Baudis <pasky@ucw.cz>  2014
 # MIT licence
 #
-# Usage: cat file.txt | speedread [-w WORDSPERMINUTE] [-m]
+# Usage: cat file.txt | speedread [-w WORDSPERMINUTE] [-r RESUMEPOINT] [-m]
 #
 # The default of 250 words per minut is very timid, designed so that
 # you get used to this.  Be sure to try cranking this up, 500wpm
@@ -31,6 +31,7 @@ use autodie;
 use v5.14;
 
 my $wpm = 250;
+my $resume = 0;
 my $multiword = 0;
 
 
@@ -45,6 +46,7 @@ use Time::HiRes qw(usleep gettimeofday tv_interval);
 
 use Getopt::Long;
 GetOptions("wpm|w=i" => \$wpm,
+	   "resume|r=i" => \$resume,
 	   "multiword|m" => \$multiword);
 
 my $wordtime = 0.9; # relative to wpm
@@ -65,6 +67,7 @@ $| = 1;
 
 my $wordcounter = 0;
 my $lettercounter = 0;
+my $resumecounter = 0;
 my $t0 = [gettimeofday];
 sub print_stats {
 	my $elapsed = tv_interval($t0, [gettimeofday]);
@@ -72,6 +75,7 @@ sub print_stats {
 	printf("\n %.2fs, %d words, %d letters, %s%.2f%s true wpm\n",
 		$elapsed, $wordcounter, $lettercounter,
 		color('bold green'), $truewpm, color('reset'));
+	printf(" To resume from this point run with argument -r %d\n", $resumecounter);
 }
 $SIG{INT} = sub { print_stats; exit; };
 
@@ -190,6 +194,12 @@ sub main {
 
 		my $wn = 0;
 		for my $word (@words) {
+			$resumecounter++;
+			if ($resume > 0) {
+				$resume--;
+				next;
+			}
+
 			my $i = find_ORP($word, $ORPloc);
 			show_word($word, $i);
 
