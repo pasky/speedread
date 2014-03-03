@@ -107,7 +107,8 @@ sub show_word {
 		. substr($word, 0, $i)
 		. color("red")
 		. $pivotch
-		. color("white")
+		. color("reset")
+		. color("bold")
 		. substr($word, $i+1)
 		. color("reset")
 		. " " x ($cursorpos - (($ORPvisualpos - $i) + length($word)))
