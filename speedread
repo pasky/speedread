@@ -221,20 +221,17 @@ sub new {
 	my $self;
 	open $self, '/dev/tty';
 	bless $self, $class;
-    if ($^O eq 'darwin') {
-        eval { system('stty -f /dev/tty min 1 -icanon -echo'); };
-    } else {
-        eval { system('stty -F /dev/tty min 1 -icanon -echo'); };
-    }
+	stty('min 1', '-icanon', '-echo');
 	return $self;
 }
 
 sub DESTROY {
-    if ($^O eq 'darwin') {
-        eval { system('stty -f /dev/tty cooked echo'); };
-    } else {
-        eval { system('stty -F /dev/tty cooked echo'); };
-    }
+	stty('cooked', 'echo');
+}
+
+sub stty {
+	my $self = shift;
+	eval { system('stty', $^O eq 'darwin' ? '-f' : '-F', '/dev/tty', @_); };
 }
 
 sub key_pressed {
