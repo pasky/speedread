@@ -42,7 +42,7 @@ binmode(STDOUT, ":encoding(UTF-8)");
 
 use Term::ANSIColor;
 use POSIX qw(ceil floor);
-use Time::HiRes qw(usleep gettimeofday tv_interval);
+use Time::HiRes qw(time sleep gettimeofday tv_interval);
 
 use Getopt::Long;
 GetOptions("wpm|w=i" => \$wpm,
@@ -60,6 +60,10 @@ my $ORPmax = 0.2;
 my $ORPvisualpos = 20;
 my $cursorpos = 64;
 my $paused = 0;
+my $current_word;
+my $current_orp;
+my $next_word_time = 0;
+my $next_input_time = 0;
 
 my @lastlines;
 my $tty = rawinput->new();
@@ -151,7 +155,7 @@ sub print_context {
 
 sub process_keys {
 	my ($word, $i, $wn) = @_;
-	while ($tty->key_pressed() or $paused) {
+	while ($tty->key_pressed()) {
 		my $ch = $tty->getch();
 		if ($ch eq '[') {
 			$wpm = int($wpm * 0.9);
@@ -167,12 +171,18 @@ sub process_keys {
 				show_guide();
 				show_word($word, $i);
 			}
+			else {
+				$next_word_time = time();
+			}
 		}
 	}
 }
 
 sub main {
 	show_guide();
+
+	$next_word_time = time();
+	$next_input_time = time();
 
 	while (<>) {
 		chomp;
@@ -193,25 +203,35 @@ sub main {
 		}
 
 		my $wn = 0;
-		for my $word (@words) {
+		while (scalar(@words) > 0) {
 			$resumecounter++;
 			if ($resume > 0) {
 				$resume--;
 				next;
 			}
 
-			my $i = find_ORP($word, $ORPloc);
-			show_word($word, $i);
+			my $current_time = time();
 
-			my $time = word_time($word);
-			Time::HiRes::usleep($time * 1000000);
+			if ($next_word_time <= $current_time and !$paused) {
+				$current_word = shift @words;
+				$current_orp = find_ORP($current_word, $ORPloc);
+				$next_word_time += word_time($current_word);
+				$wordcounter++;
+				$lettercounter += length($current_word);
+				$wn++;
+			}
 
-			# Here, we potentially get paused.
-			process_keys($word, $i, $wn);
+			if ($next_input_time <= $current_time) {
+				process_keys($current_word, $current_orp, $wn);
+				$next_input_time += 0.05; # checking for input 20 times / second seems to give a reasonably responsive UI
+			}
 
-			$wordcounter++;
-			$lettercounter += length($word);
-			$wn++;
+			# redrawing the word on each "frame" gives a more responsive UI
+			# (we don't have to wait for the word to change to display changed stats like wpm)
+			show_word($current_word, $current_orp);
+
+			my $sleep_time = ($next_word_time < $next_input_time and !$paused) ? $next_word_time-$current_time : $next_input_time-$current_time;
+			sleep($sleep_time) if ($sleep_time > 0);
 		}
 	}
 
