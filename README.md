@@ -47,6 +47,9 @@ TODO
 
 Not sure if I will ever get around to these...
 
+  * Better word timing! Instead of just pausing longer at commas and
+    full-stops, distribute time better. Some short words like "not"
+    and "can" could often get missed the way things are now.
   * Support for seeking back/forward.
   * Automatically adjust wpm on trained content difficulty (look-ahead)?
   * More controls, explore how can interactivity enhance usefulness of this.
