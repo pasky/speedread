@@ -10,7 +10,7 @@
 # (c) Petr Baudis <pasky@ucw.cz>  2014
 # MIT licence
 #
-# Usage: cat file.txt | speedread [-w WORDSPERMINUTE] [-r RESUMEPOINT] [-m]
+# Usage: cat file.txt | speedread [-w WORDSPERMINUTE] [-r RESUMEPOINT] [-m] [-f]
 #
 # The default of 250 words per minut is very timid, designed so that
 # you get used to this.  Be sure to try cranking this up, 500wpm
@@ -33,6 +33,7 @@ use v5.14;
 my $wpm = 250;
 my $resume = 0;
 my $multiword = 0;
+my $fancy = 0;
 
 
 use utf8;
@@ -47,7 +48,8 @@ use Time::HiRes qw(usleep gettimeofday tv_interval);
 use Getopt::Long;
 GetOptions("wpm|w=i" => \$wpm,
 	   "resume|r=i" => \$resume,
-	   "multiword|m" => \$multiword);
+	   "multiword|m" => \$multiword,
+	   "fancy|f" => \$fancy);
 
 my $wordtime = 0.9; # relative to wpm
 my $lentime = 0.04; # * sqrt(length $word), relative to wpm
@@ -171,8 +173,24 @@ sub process_keys {
 		}
 	}
 }
+sub fancy_intro {
+	return unless $fancy;
+	my $clr = `clear`;
+	print $clr;
+	my $i;
+
+	for($i = 0; $i < 8; $i++) {
+		print($clr, "\n"x$i);
+		show_guide();
+		Time::HiRes::usleep(100000);
+	}
+	Time::HiRes::usleep(500000);
+	$i--;
+	print $clr, "\n"x$i;
+}
 
 sub main {
+	fancy_intro();
 	show_guide();
 
 	while (<>) {
