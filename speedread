@@ -36,6 +36,7 @@ my $multiword = 0;
 
 
 use utf8;
+use encoding 'utf8';
 use encoding::warnings;
 binmode(STDIN, ":encoding(UTF-8)");
 binmode(STDOUT, ":encoding(UTF-8)");
