@@ -65,6 +65,7 @@ my $current_word;
 my $current_orp;
 my $next_word_time = 0;
 my $next_input_time = 0;
+my $skipped = 0;
 
 my @lastlines;
 my $tty = rawinput->new();
@@ -72,7 +73,6 @@ $| = 1;
 
 my $wordcounter = 0;
 my $lettercounter = 0;
-my $resumecounter = 0;
 my $t0 = [gettimeofday];
 sub print_stats {
 	my $elapsed = tv_interval($t0, [gettimeofday]);
@@ -83,7 +83,8 @@ sub print_stats {
 }
 $SIG{INT} = sub {
 	print_stats;
-	say " To resume from this point run with argument -r $resumecounter";
+	my $resume_word = $wordcounter + $resume;
+	say " To resume from this point run with argument -r $resume_word";
 	exit;
 };
 
@@ -209,9 +210,9 @@ sub main {
 
 		my $wn = 0;
 		while (scalar(@words) > 0) {
-			$resumecounter++;
-			if ($resume > 0) {
-				$resume--;
+			if ($skipped < $resume) {
+				$skipped++;
+				shift @words;
 				next;
 			}
 
