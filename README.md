@@ -58,6 +58,6 @@ Not sure if I will ever get around to these...
     filter philosophy). This would allow better eye guidance and large font.
   * An elinks-based recipe for reading websites this way.
 
-Check out also [OpenSpritz](https://github.com/Miserlou/OpenSpritz) or
+Check out also [OpenSpritz](https://github.com/Miserlou/Glance-Bookmarklet) or
 [spritz-js](https://github.com/richardtagger/spritz-js) if you want to
 get this functionality in the web context.
