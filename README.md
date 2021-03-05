@@ -13,7 +13,7 @@ Basic Example
 
 	cat tea.txt | ./speedread -w 250
 
-The default of 250 words per minut is very timid, designed so that you get
+The default of 250 words per minute is very timid, designed so that you get
 used to this.  Be sure to try cranking this up, 500wpm should still be fairly
 easy to follow even for beginners.
 
