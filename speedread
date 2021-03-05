@@ -127,7 +127,7 @@ sub word_time {
 	my ($word) = @_;
 
 	my $time = $wordtime;
-	if ($word =~ /[\.\?]\W*$/) {
+	if ($word =~ /[.?!]\W*$/) {
 		$time = $fstoptime;
 	} elsif ($word =~ /[:;,]\W*$/) {
 		$time = $commatime;
