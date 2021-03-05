@@ -127,11 +127,12 @@ sub word_time {
 	my ($word) = @_;
 
 	my $time = $wordtime;
-	if ($word =~ /[\.\?]\W*$/) {
+	# \x{2014} = mdash
+	if ($word =~ /(?:[\.\?]\W*$|--|\x{2014})/) {
 		$time = $fstoptime;
 	} elsif ($word =~ /[:;,]\W*$/) {
 		$time = $commatime;
-	} elsif ($word =~ / /) {
+	} elsif ($word =~ /[ -]/) {
 		$time = $multitime;
 	}
 	$time += sqrt(length($word)) * $lentime;
@@ -194,7 +195,7 @@ sub main {
 		unshift @lastlines, $_;
 		pop @lastlines if @lastlines > 2;
 
-		my (@words) = grep { /./ } split /(?:-|\s)+/;
+		my (@words) = grep { /./ } split /\s+/;
 
 		if ($multiword) {
 			# Join adjecent short words
